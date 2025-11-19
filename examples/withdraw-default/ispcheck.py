@@ -2,10 +2,13 @@
 
 import json
 
-from vyos-helpers import log_message
-from vyos-helpers import ntfy
-from vyos-helpers import configure
-from vyos-helpers import ping_test
+from vyos_helpers import log_message
+from vyos_helpers import ntfy
+from vyos_helpers import configure
+from vyos_helpers import ping_test
+
+from vyos.utils.process import cmd
+from vyos.utils.dict import dict_search_args
 
 # Variables
 addresses = ["1.1.1.1", "8.8.8.8", "9.9.9.9"]
