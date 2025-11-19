@@ -3,6 +3,8 @@
 import time
 import syslog
 
+from vyos.utils.process import cmd
+from vyos.utils.process import rc_cmd
 from vyos.utils.process import run
 
 def ntfy(message, url):
@@ -97,4 +99,58 @@ def ping_test(addresses, retries=3, interval=5):
             return True
         if attempt < retries - 1:
             time.sleep(interval)
+    return False
+
+def dns_test(servers, query, retries=3, interval=5):
+    """
+    Test whether a DNS record exists by querying one or more DNS servers.
+
+    Args:
+        servers (list[str]): DNS server IPs to query.
+        record (str): Domain name (or FQDN) to check.
+        retries (int, optional): Total retry rounds. Defaults to 3.
+        interval (int, optional): Seconds between retries. Defaults to 5.
+
+    Returns:
+        bool: True if any server returns a non-empty ANSWER section during
+              any attempt, False if all attempts fail.
+    """
+    for attempt in range(retries):
+        for server in servers:
+            output = cmd(f"dig @{server} {query} +time=1 +tries=1 +retry=0 +noall +answer")
+            if output and output.strip():
+                return True
+
+        if attempt < retries - 1:
+            time.sleep(interval)
+
+    return False
+
+def http_test(urls, retries=3, timeout=2):
+    """
+    Test whether any HTTP/HTTPS URL in a list is reachable.
+
+    Args:
+        urls (list[str]): List of URLs to test.
+        retries (int, optional): Total attempts. Defaults to 3.
+        timeout (int, optional): Curl timeout in seconds. Defaults to 2.
+
+    Returns:
+        bool: True if any URL returns a 2xx or 3xx status code during any
+              attempt, False if all attempts fail.
+    """
+    for attempt in range(retries):
+        for url in urls:
+            # curl prints only the HTTP status code
+            rc, status = rc_cmd(
+                f"curl -s -o /dev/null -w '%{{http_code}}' --max-time {timeout} '{url}'"
+            )
+
+            # rc != 0 means curl failed (DNS, TLS, timeout, connection refused, etc.)
+            # so we only evaluate status when we got output
+            if status:
+                code = status.strip()
+                if code and code[0] in ("2", "3"):
+                    return True
+
     return False
