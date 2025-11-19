@@ -3,9 +3,7 @@
 import time
 import syslog
 
-from vyos.utils.process import cmd
 from vyos.utils.process import run
-from vyos.utils.dict import dict_search_args
 
 def ntfy(message, url):
     """
