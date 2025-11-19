@@ -6,12 +6,13 @@ from vyos_helpers import log_message
 from vyos_helpers import ntfy
 from vyos_helpers import configure
 from vyos_helpers import ping_test
+from vyos_helpers import ping_targets
 
 from vyos.utils.process import cmd
 from vyos.utils.dict import dict_search_args
 
 # Variables
-addresses = ["1.1.1.1", "8.8.8.8", "9.9.9.9"]
+addresses = [*ping_targets["cloudflare"], *ping_targets["google"], *ping_targets["quad9"]]
 peer = "172.16.0.2"
 
 bgp_data = json.loads(cmd(f"vtysh -c 'show ip bgp neighbor {peer} json'"))
@@ -30,3 +31,4 @@ else:
         log_message(f"All addresses failed to respond. Withdrawing default route to {peer}...", "ispcheck.py")
         ntfy(f"ISP checks failed. Withdrawing default route to peer {peer}", "http://10.0.95.80/bgp")
         configure([f'delete protocols bgp neighbor {peer} address-family ipv4-unicast default-originate'])
+        
