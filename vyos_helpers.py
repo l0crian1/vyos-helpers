@@ -173,3 +173,25 @@ def http_test(urls, retries=3, timeout=2):
                     return True
 
     return False
+
+def port_test(port, address, retries=3, interval=3, timeout=2):
+    """
+    Test whether a port is open on an address.
+
+    Args:
+        port (int): Port number to test.
+        address (str): Address to test.
+        retries (int, optional): Total retry rounds. Defaults to 3.
+        interval (int, optional): Seconds between retries. Defaults to 3.
+        timeout (int, optional): Timeout in seconds. Defaults to 2.
+
+    Returns:
+        bool: True if the port is open, False if it is not.
+    """
+    for attempt in range(retries):
+        rc, status = rc_cmd(f"nc -z -w {timeout} {address} {port}")
+        if rc == 0:
+            return True
+        if attempt < retries - 1:
+            time.sleep(interval)
+    return False
