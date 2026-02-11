@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import time
-import syslog
+from time import sleep
+from syslog import openlog, syslog, closelog, LOG_INFO, LOG_PID
 
 from vyos.utils.process import cmd
 from vyos.utils.process import rc_cmd
@@ -44,7 +44,7 @@ def ntfy(message, url, source_address=""):
 
     run(f'curl -d "{message}" {source_address} {url}')
 
-def log_message(message, process, level=syslog.LOG_INFO):
+def log_message(message, process, level=LOG_INFO):
     """
     Send a syslog message with a custom process name.
 
@@ -58,9 +58,9 @@ def log_message(message, process, level=syslog.LOG_INFO):
         This is useful when multiple components or scripts need to log
         separately within VyOS or systemd-journald.
     """    
-    syslog.openlog(process, syslog.LOG_PID)
-    syslog.syslog(level, message)    
-    syslog.closelog()
+    openlog(process, LOG_PID)
+    syslog(level, message)    
+    closelog()
 
 def configure(commands):
     """
@@ -123,7 +123,7 @@ def ping_test(addresses, source_address="", retries=3, interval=5):
         if any(run(f"ping {addr} -c 1 -W 0.5 {source_address}") == 0 for addr in addresses):
             return True
         if attempt < retries - 1:
-            time.sleep(interval)
+            sleep(interval)
     return False
 
 def dns_test(servers, query, source_address="", retries=3, interval=5):
@@ -150,7 +150,7 @@ def dns_test(servers, query, source_address="", retries=3, interval=5):
                 return True
 
         if attempt < retries - 1:
-            time.sleep(interval)
+            sleep(interval)
 
     return False
 
@@ -208,5 +208,5 @@ def port_test(port, address, source_address="", retries=3, interval=3, timeout=2
         if rc == 0:
             return True
         if attempt < retries - 1:
-            time.sleep(interval)
+            sleep(interval)
     return False
