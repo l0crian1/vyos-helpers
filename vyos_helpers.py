@@ -26,7 +26,7 @@ ping_targets = {
     "aws": ["13.248.118.1", "52.85.61.52"],
 }
 
-def ntfy(message, url):
+def ntfy(message, url, source_address=""):
     """
     Send a notification via an ntfy.sh endpoint.
     More info: https://ntfy.sh/
@@ -39,7 +39,10 @@ def ntfy(message, url):
         Caller should ensure the URL points to the correct topic and
         that ntfy.sh is reachable.
     """    
-    run(f'curl -d "{message}" {url}')
+    if source_address:
+        source_address = f"--interface {source_address}"
+
+    run(f'curl -d "{message}" {source_address} {url}')
 
 def log_message(message, process, level=syslog.LOG_INFO):
     """
@@ -95,7 +98,7 @@ def configure(commands):
         print(command)
     print('commit')
 
-def ping_test(addresses, retries=3, interval=5):
+def ping_test(addresses, source_address="", retries=3, interval=5):
     """
     Test reachability of one or more targets using ping.
 
@@ -113,14 +116,17 @@ def ping_test(addresses, retries=3, interval=5):
         checks fast. Intended for ISP failover, link-health checks,
         or route-validation logic.
     """    
+    if source_address:
+        source_address = f"-I {source_address}"
+
     for attempt in range(retries):
-        if any(run(f"ping {addr} -c 1 -W 0.5") == 0 for addr in addresses):
+        if any(run(f"ping {addr} -c 1 -W 0.5 {source_address}") == 0 for addr in addresses):
             return True
         if attempt < retries - 1:
             time.sleep(interval)
     return False
 
-def dns_test(servers, query, retries=3, interval=5):
+def dns_test(servers, query, source_address="", retries=3, interval=5):
     """
     Test whether a DNS record exists by querying one or more DNS servers.
 
@@ -134,9 +140,12 @@ def dns_test(servers, query, retries=3, interval=5):
         bool: True if any server returns a non-empty ANSWER section during
               any attempt, False if all attempts fail.
     """
+    if source_address:
+        source_address = f"-b {source_address}"
+
     for attempt in range(retries):
         for server in servers:
-            output = cmd(f"dig @{server} {query} +time=1 +tries=1 +retry=0 +noall +answer")
+            output = cmd(f"dig {source_address} @{server} {query} +time=1 +tries=1 +retry=0 +noall +answer")
             if output and output.strip():
                 return True
 
@@ -145,7 +154,7 @@ def dns_test(servers, query, retries=3, interval=5):
 
     return False
 
-def http_test(urls, retries=3, timeout=2):
+def http_test(urls, source_address="", retries=3, timeout=2):
     """
     Test whether any HTTP/HTTPS URL in a list is reachable.
 
@@ -158,11 +167,14 @@ def http_test(urls, retries=3, timeout=2):
         bool: True if any URL returns a 2xx or 3xx status code during any
               attempt, False if all attempts fail.
     """
+    if source_address:
+        source_address = f"--interface {source_address}"
+
     for attempt in range(retries):
         for url in urls:
             # curl prints only the HTTP status code
             rc, status = rc_cmd(
-                f"curl -s -o /dev/null -w '%{{http_code}}' --max-time {timeout} '{url}'"
+                f"curl -s -o /dev/null -w '%{{http_code}}' --max-time {timeout} {source_address} '{url}'"
             )
 
             # rc != 0 means curl failed (DNS, TLS, timeout, connection refused, etc.)
@@ -174,7 +186,7 @@ def http_test(urls, retries=3, timeout=2):
 
     return False
 
-def port_test(port, address, retries=3, interval=3, timeout=2):
+def port_test(port, address, source_address="", retries=3, interval=3, timeout=2):
     """
     Test whether a port is open on an address.
 
@@ -188,8 +200,11 @@ def port_test(port, address, retries=3, interval=3, timeout=2):
     Returns:
         bool: True if the port is open, False if it is not.
     """
+    if source_address:
+        source_address = f"-s {source_address}"
+
     for attempt in range(retries):
-        rc, status = rc_cmd(f"nc -z -w {timeout} {address} {port}")
+        rc, status = rc_cmd(f"nc -z -w {timeout} {source_address} {address} {port}")
         if rc == 0:
             return True
         if attempt < retries - 1:
